@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI量化交易学习平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- 标题区域 -->
+        <div class="row bg-primary text-white py-4">
+            <div class="col-12 text-center">
+                <h1><i class="bi bi-graph-up"></i> AI量化交易学习平台</h1>
+                <p class="lead mb-0">专业的分层架构，适合初学者学习的量化交易平台</p>
+            </div>
+        </div>
+
+        <!-- 工作流程指示器 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="progress-section text-center">
+                    <h3>🚀 工作流程</h3>
+                    <div class="row">
+                        <div class="col-md-2">
+                            <div class="workflow-step active" id="step1">
+                                <h5><i class="bi bi-download"></i></h5>
+                                <p>数据获取</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="workflow-step" id="step2">
+                                <h5><i class="bi bi-gear"></i></h5>
+                                <p>特征工程</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="workflow-step" id="step3">
+                                <h5><i class="bi bi-cpu"></i></h5>
+                                <p>模型训练</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="workflow-step" id="step4">
+                                <h5><i class="bi bi-graph-up"></i></h5>
+                                <p>回测分析</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="workflow-step" id="step5">
+                                <h5><i class="bi bi-search"></i></h5>
+                                <p>历史验证</p>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="workflow-step" id="step6">
+                                <h5><i class="bi bi-lightning"></i></h5>
+                                <p>未来预测</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第一步：数据获取与清洗 -->
+        <div class="module-section" id="dataModule">
+            <h3><i class="bi bi-download text-primary"></i> 第一步：数据获取与清洗</h3>
+            <p class="text-muted">从多个数据源下载股票数据，进行清洗和预处理，保存到本地文件</p>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>下载参数</h5>
+                    <div class="mb-3">
+                        <label class="form-label">股票池</label>
+                        <select class="form-select" id="stockPool">
+                            <option value="bank">🏦 银行股 (7只)</option>
+                            <option value="tech">💻 科技股 (7只)</option>
+                            <option value="energy">⚡ 能源股 (7只)</option>
+                            <option value="consumer">🛒 消费股 (7只)</option>
+                            <option value="pharma">💊 医药股 (7只)</option>
+                            <option value="all">🌐 全市场 (15只)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5>选择数据源</h5>
+                        <select class="form-select mb-3" id="dataSource">
+                            <option value="auto">🔄 自动选择 (智能降级)</option>
+                            <option value="baostock">🏦 baostock (稳定可靠)</option>
+                            <option value="akshare">📊 akshare (数据较新)</option>
+                        </select>
+                        <div class="data-source-info mt-2">
+                            <small class="text-muted d-block">
+                                <strong>🔄 自动选择:</strong> 优先使用 akshare，失败时自动降级到 baostock
+                            </small>
+                            <small class="text-muted d-block">
+                                <strong>🏦 baostock:</strong> 稳定可靠，适合批量下载和初学者
+                            </small>
+                            <small class="text-muted d-block">
+                                <strong>📊 akshare:</strong> 数据较新，包含更多技术指标，适合专业用户
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5>选择时间范围</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <label for="downloadStartDate" class="form-label">开始日期</label>
+                                <input type="date" class="form-control" id="downloadStartDate" value="2021-01-01">
+                                <small class="text-muted">数据下载开始日期</small>
+                            </div>
+                            <div class="col-6">
+                                <label for="downloadEndDate" class="form-label">结束日期</label>
+                                <input type="date" class="form-control" id="downloadEndDate" value="2025-12-31">
+                                <small class="text-muted">数据下载结束日期</small>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-2">
+                            <small>
+                                <strong>💡 建议:</strong> 建议下载2021-2025年的数据，其中2021-2024年用于训练，2025年用于验证
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary btn-lg" onclick="downloadData()" id="downloadBtn">
+                        <i class="bi bi-download"></i> 开始下载
+                    </button>
+                    <small class="text-muted d-block mt-2">点击开始下载股票数据</small>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>下载状态</h5>
+                    <div id="downloadStatus">
+                        <p class="text-muted">等待开始下载</p>
+                    </div>
+                    
+                    <h5 class="mt-4">下载进度</h5>
+                    <div id="downloadProgress" style="display: none;">
+                        <div class="progress-indicator">
+                            <div class="progress-bar" id="downloadProgressBar" style="width: 0%"></div>
+                        </div>
+                        <p class="mt-2" id="downloadStatusText">准备下载...</p>
+                    </div>
+                    
+                    <div id="downloadOverview" class="mt-3">
+                        <span class="badge bg-secondary">等待下载</span>
+                    </div>
+                    
+                    <div id="dataOverview" class="mt-3">
+                        <span class="badge bg-secondary">等待数据</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 数据状态 -->
+            <div id="dataStatus" class="mt-4">
+                <h5>数据状态</h5>
+                <div class="row">
+                    <!-- 状态将在这里动态显示 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 清空所有数据 -->
+        <div class="clear-data-section">
+            <h3><i class="bi bi-trash text-warning"></i> 清空所有数据</h3>
+            <p class="text-muted">⚠️ 危险操作：此功能将删除所有已下载的数据、构建的特征、训练的模型、回测结果和预测结果</p>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle"></i> 清空前请确认：</h6>
+                        <ul class="mb-0">
+                            <li>所有股票数据将被删除</li>
+                            <li>所有特征数据将被删除</li>
+                            <li>所有训练好的模型将被删除</li>
+                            <li>所有回测结果将被删除</li>
+                            <li>所有预测结果将被删除</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 text-center">
+                    <button class="btn clear-data-btn btn-lg" onclick="clearAllData()" id="clearDataBtn">
+                        <i class="bi bi-trash"></i> 清空所有数据
+                    </button>
+                    <small class="text-muted d-block mt-2">点击后需要二次确认</small>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <h6>清空进度</h6>
+                <div id="clearDataProgress" style="display: none;">
+                    <div class="progress-indicator">
+                        <div class="progress-bar" id="clearDataProgressBar" style="width: 0%"></div>
+                    </div>
+                    <p class="mt-2" id="clearDataStatusText">准备清空...</p>
+                </div>
+                
+                <div id="clearDataOverview" class="mt-3">
+                    <span class="badge bg-secondary">等待清空</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二步：特征工程 -->
+        <div class="module-section" id="featureModule">
+            <h3><i class="bi bi-gear text-success"></i> 第二步：特征工程</h3>
+            <p class="text-muted">基于清洗后的价格数据，构建技术指标特征，为机器学习模型提供输入</p>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>特征构建设置</h5>
+                    <p>将基于清洗后的数据构建技术指标特征</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">特征类型</label>
+                        <select class="form-select" id="featureType">
+                            <option value="all">🔧 全部特征 (推荐)</option>
+                            <option value="basic">📊 基础特征 (MA, RSI, MACD)</option>
+                            <option value="advanced">🚀 高级特征 (布林带, 支撑阻力)</option>
+                        </select>
+                        <small class="text-muted">选择要构建的特征类型</small>
+                    </div>
+                    
+                    <button class="btn btn-success btn-lg" onclick="buildFeatures()" id="buildFeaturesBtn">
+                        <i class="bi bi-gear"></i> 构建特征
+                    </button>
+                    <small class="text-muted d-block mt-2">点击开始构建特征</small>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>特征构建状态</h5>
+                    <div id="featureStatus">
+                        <p class="text-muted">等待数据下载完成</p>
+                    </div>
+                    
+                    <h5 class="mt-4">构建进度</h5>
+                    <div id="featureProgress" style="display: none;">
+                        <div class="progress-indicator">
+                            <div class="progress-bar" id="featureProgressBar" style="width: 0%"></div>
+                        </div>
+                        <p class="mt-2" id="featureStatusText">准备构建...</p>
+                    </div>
+                    
+                    <div id="featureOverview" class="mt-3">
+                        <span class="badge bg-secondary">等待构建</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 特征状态 -->
+            <div id="featureStatusDisplay" class="mt-4">
+                <h5>特征状态</h5>
+                <div class="row">
+                    <!-- 状态将在这里动态显示 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 第三步：模型训练 -->
+        <div class="module-section" id="trainingModule">
+            <h3><i class="bi bi-cpu text-warning"></i> 第三步：模型训练</h3>
+            <p class="text-muted">使用构建好的特征数据训练机器学习模型，评估模型性能并保存</p>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>训练设置</h5>
+                    <p>将基于特征数据训练机器学习模型</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">交叉验证折数</label>
+                        <select class="form-select" id="cvFolds">
+                            <option value="3">3折 (快速)</option>
+                            <option value="5" selected>5折 (推荐)</option>
+                            <option value="10">10折 (精确)</option>
+                        </select>
+                        <small class="text-muted">选择交叉验证折数，折数越多越精确但训练时间越长</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">随机种子</label>
+                        <input type="number" class="form-control" id="randomSeed" value="42" min="1" max="9999">
+                        <small class="text-muted">设置随机种子，确保结果可重现</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">训练时间范围</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="date" class="form-control" id="trainingStartDate" value="2021-01-01">
+                                <small class="text-muted">开始日期</small>
+                            </div>
+                            <div class="col-6">
+                                <input type="date" class="form-control" id="trainingEndDate" value="2024-12-31">
+                                <small class="text-muted">结束日期</small>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">默认使用2021-2024年数据进行训练，其中20%用于测试</small>
+                    </div>
+                    
+                    <button class="btn btn-warning btn-lg" onclick="trainModels()" id="trainModelsBtn">
+                        <i class="bi bi-cpu"></i> 开始训练
+                    </button>
+                    <small class="text-muted d-block mt-2">点击开始训练模型</small>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>训练状态</h5>
+                    <div id="trainingStatus">
+                        <p class="text-muted">等待特征构建完成</p>
+                    </div>
+                    
+                    <h5 class="mt-4">训练进度</h5>
+                    <div id="trainingProgress" style="display: none;">
+                        <div class="progress-indicator">
+                            <div class="progress-bar" id="trainingProgressBar" style="width: 0%"></div>
+                        </div>
+                        <p class="mt-2" id="trainingStatusText">准备训练...</p>
+                    </div>
+                    
+                    <div id="trainingOverview" class="mt-3">
+                        <span class="badge bg-secondary">等待训练</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 训练结果 -->
+            <div id="trainingResults" class="mt-4" style="display: none;">
+                <h5>训练结果</h5>
+                <div class="row">
+                    <!-- 结果将在这里动态显示 -->
+                </div>
+            </div>
+            
+            <!-- 模型状态 -->
+            <div id="modelStatus" class="mt-4" style="display: none;">
+                <h5>模型状态详情</h5>
+                <div class="row">
+                    <!-- 模型状态将在这里动态显示 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 第四步：回测分析 -->
+        <div class="module-section" id="backtestModule">
+            <h3><i class="bi bi-graph-up text-info"></i> 第四步：回测分析</h3>
+            <p class="text-muted">使用训练好的模型和特征数据，模拟历史交易策略，分析策略性能</p>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>回测设置</h5>
+                    <p>将基于训练好的模型进行策略回测</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">初始资金</label>
+                        <input type="number" class="form-control" id="backtestCash" value="100000" min="10000" step="10000">
+                        <small class="text-muted">设置回测初始资金</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">手续费率</label>
+                        <input type="number" class="form-control" id="backtestCommission" value="0.0003" step="0.0001" min="0" max="0.01">
+                        <small class="text-muted">设置交易手续费率，默认0.03%</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">ML信号阈值</label>
+                        <input type="number" class="form-control" id="backtestMlThreshold" value="0.51" step="0.01" min="0.1" max="0.9">
+                        <small class="text-muted">建议设置为0.51-0.53，避免过高阈值导致无交易信号</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">回测时间范围</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="date" class="form-control" id="backtestStartDate" value="2021-01-01">
+                                <small class="text-muted">开始日期</small>
+                            </div>
+                            <div class="col-6">
+                                <input type="date" class="form-control" id="backtestEndDate" value="2025-12-31">
+                                <small class="text-muted">结束日期</small>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">使用完整历史数据进行策略回测</small>
+                    </div>
+                    
+                    <button class="btn btn-info btn-lg" onclick="runBacktest()" id="runBacktestBtn">
+                        <i class="bi bi-graph-up"></i> 开始回测
+                    </button>
+                    <small class="text-muted d-block mt-2">点击开始回测</small>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>回测状态</h5>
+                    <div id="backtestStatus">
+                        <p class="text-muted">等待模型训练完成</p>
+                    </div>
+                    
+                    <h5 class="mt-4">回测进度</h5>
+                    <div id="backtestProgress" style="display: none;">
+                        <div class="progress-indicator">
+                            <div class="progress-bar" id="backtestProgressBar" style="width: 0%"></div>
+                        </div>
+                        <p class="mt-2" id="backtestStatusText">准备回测...</p>
+                    </div>
+                    
+                    <div id="backtestOverview" class="mt-3">
+                        <span class="badge bg-secondary">等待回测</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 回测结果 -->
+            <div id="backtestResults" class="mt-4" style="display: none;">
+                <h5>回测结果</h5>
+                <div class="row">
+                    <!-- 结果将在这里动态显示 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 第五步：历史预测验证 -->
+        <div class="module-section" id="historicalModule">
+            <h3><i class="bi bi-search text-secondary"></i> 第五步：历史预测验证</h3>
+            <p class="text-muted">使用训练好的模型在2025年数据上验证模型效果，评估模型在未使用数据上的表现</p>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>历史验证设置</h5>
+                    <p>设置验证时间范围，建议使用训练数据范围之外的日期进行验证</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">验证时间范围</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="date" class="form-control" id="historicalStartDate" value="2025-01-01">
+                                <small class="text-muted">开始日期（建议使用训练数据范围之外的日期）</small>
+                            </div>
+                            <div class="col-6">
+                                <input type="date" class="form-control" id="historicalEndDate" value="2025-12-31">
+                                <small class="text-muted">结束日期（建议使用训练数据范围之外的日期）</small>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">建议使用训练数据范围之外的日期进行验证，避免数据泄露</small>
+                    </div>
+                    
+                    <button class="btn btn-secondary btn-lg" onclick="runHistoricalValidation()" id="runHistoricalBtn">
+                        <i class="bi bi-search"></i> 开始历史验证
+                    </button>
+                    <small class="text-muted d-block mt-2">点击开始历史验证</small>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>历史验证状态</h5>
+                    <div id="historicalStatus">
+                        <p class="text-muted">等待模型训练完成</p>
+                    </div>
+                    
+                    <h5 class="mt-4">验证进度</h5>
+                    <div id="historicalProgress" style="display: none;">
+                        <div class="progress-indicator">
+                            <div class="progress-bar" id="historicalProgressBar" style="width: 0%"></div>
+                        </div>
+                        <p class="mt-2" id="historicalStatusText">准备验证...</p>
+                    </div>
+                    
+                    <div id="historicalOverview" class="mt-3">
+                        <span class="badge bg-secondary">等待验证</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 历史验证结果 -->
+            <div id="historicalResults" class="mt-4" style="display: none;">
+                <h5>历史验证结果</h5>
+                <div class="row">
+                    <!-- 结果将在这里动态显示 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 第六步：未来预测 -->
+        <div class="module-section" id="futureModule">
+            <h3><i class="bi bi-lightning text-danger"></i> 第六步：未来预测</h3>
+            <p class="text-muted">基于最新特征数据，预测未来1-5天的股票涨跌，生成交易信号</p>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>未来预测设置</h5>
+                    <p>将基于最新特征预测未来1-5天的涨跌</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">股票代码</label>
+                        <input type="text" class="form-control" id="futureStockCode" placeholder="例如: sh.600000">
+                        <small class="text-muted">输入要预测的股票代码</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">预测天数</label>
+                        <select class="form-select" id="predictionDays">
+                            <option value="1">1天</option>
+                            <option value="2">2天</option>
+                            <option value="3">3天</option>
+                            <option value="4">4天</option>
+                            <option value="5" selected>5天 (最大)</option>
+                        </select>
+                        <small class="text-muted">最多只能预测5天，超过会自动调整</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">置信度阈值</label>
+                        <input type="number" class="form-control" id="confidenceThreshold" value="0.6" step="0.05" min="0.5" max="0.9">
+                        <small class="text-muted">设置预测置信度阈值，建议0.6-0.7</small>
+                    </div>
+                    
+                    <button class="btn btn-danger btn-lg" onclick="runFuturePrediction()" id="runFutureBtn">
+                        <i class="bi bi-lightning"></i> 开始未来预测
+                    </button>
+                    <small class="text-muted d-block mt-2">点击开始未来预测</small>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5>未来预测状态</h5>
+                    <div id="futureStatus">
+                        <p class="text-muted">等待模型训练完成</p>
+                    </div>
+                    
+                    <h5 class="mt-4">预测进度</h5>
+                    <div id="futureProgress" style="display: none;">
+                        <div class="progress-indicator">
+                            <div class="progress-bar" id="futureProgressBar" style="width: 0%"></div>
+                        </div>
+                        <p class="mt-2" id="futureStatusText">准备预测...</p>
+                    </div>
+                    
+                    <div id="futureOverview" class="mt-3">
+                        <span class="badge bg-secondary">等待预测</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 未来预测结果 -->
+            <div id="futureResults" class="mt-4" style="display: none;">
+                <h5>未来预测结果</h5>
+                <div class="row">
+                    <!-- 结果将在这里动态显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 引入外部JavaScript文件 -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
