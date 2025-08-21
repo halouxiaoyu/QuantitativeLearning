@@ -132,8 +132,20 @@ class BacktestAnalyzer:
         return feat_valid, X
     
     def run_single_backtest(self, stock_code, cash=100000, commission=0.0008, ml_threshold=0.51, start_date=None, end_date=None):
-        """运行单个股票的回测"""
+        """运行单个股票的回测
+        
+        Args:
+            stock_code: 股票代码
+            cash: 初始资金
+            commission: 手续费率，默认0.08% (包含印花税、过户费等)
+            ml_threshold: ML信号阈值
+            start_date: 开始日期
+            end_date: 结束日期
+        """
         print(f"📊 开始回测: {stock_code}")
+        print(f"💰 初始资金: {cash:,.0f}")
+        print(f"💸 手续费率: {commission:.4f} ({commission*100:.2f}%)")
+        print(f"🎯 ML阈值: {ml_threshold}")
         print("=" * 60)
         
         try:
@@ -294,7 +306,16 @@ class BacktestAnalyzer:
             return None
     
     def batch_backtest(self, stock_list=None, cash=100000, commission=0.0008, ml_threshold=0.51, start_date=None, end_date=None):
-        """批量回测"""
+        """批量回测多个股票
+        
+        Args:
+            stock_list: 股票列表
+            cash: 初始资金
+            commission: 手续费率，默认0.08% (包含印花税、过户费等)
+            ml_threshold: ML信号阈值
+            start_date: 开始日期
+            end_date: 结束日期
+        """
         if stock_list is None:
             # 从特征目录获取股票列表
             if os.path.exists(self.features_dir):
@@ -308,6 +329,12 @@ class BacktestAnalyzer:
             return {}
         
         print(f"🚀 开始批量回测: {len(stock_list)} 只股票")
+        print("=" * 60)
+        print(f"💰 初始资金: {cash:,.0f}")
+        print(f"💸 手续费率: {commission:.4f} ({commission*100:.2f}%)")
+        print(f"🎯 ML阈值: {ml_threshold}")
+        if start_date and end_date:
+            print(f"📅 回测时间: {start_date} 到 {end_date}")
         print("=" * 60)
         
         results = {}

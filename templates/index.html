@@ -67,22 +67,30 @@
 
         <!-- 第一步：数据获取与清洗 -->
         <div class="module-section" id="dataModule">
-            <h3><i class="bi bi-download text-primary"></i> 第一步：数据获取与清洗</h3>
-            <p class="text-muted">从多个数据源下载股票数据，进行清洗和预处理，保存到本地文件</p>
+            <h3><i class="bi bi-download text-primary"></i> 第一步：单个股票数据获取与清洗</h3>
+            <p class="text-muted">输入股票代码，从多个数据源下载数据，进行清洗和预处理，保存到本地文件</p>
             
             <div class="row">
                 <div class="col-md-6">
-                    <h5>下载参数</h5>
+                    <h5>单个股票分析</h5>
                     <div class="mb-3">
-                        <label class="form-label">股票池</label>
-                        <select class="form-select" id="stockPool">
-                            <option value="bank">🏦 银行股 (7只)</option>
-                            <option value="tech">💻 科技股 (7只)</option>
-                            <option value="energy">⚡ 能源股 (7只)</option>
-                            <option value="consumer">🛒 消费股 (7只)</option>
-                            <option value="pharma">💊 医药股 (7只)</option>
-                            <option value="all">🌐 全市场 (15只)</option>
-                        </select>
+                        <label for="singleStockCode" class="form-label">股票代码</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="singleStockCode" 
+                                   placeholder="输入股票代码，如：600000、000001、sh600000等" 
+                                   maxlength="10">
+                            <button class="btn btn-outline-secondary" type="button" onclick="validateStockCode()">
+                                <i class="bi bi-check-circle"></i> 验证
+                            </button>
+                        </div>
+                        <div id="stockCodeValidation" class="mt-2"></div>
+                        <small class="text-muted">
+                            <strong>支持的格式:</strong><br>
+                            • 纯数字: 600000 (自动识别交易所)<br>
+                            • 带前缀: sh600000, sz000001<br>
+                            • 带后缀: 600000.SH, 000001.SZ<br>
+                            • 标准格式: sh.600000, sz.000001
+                        </small>
                     </div>
                     
                     <div class="mb-3">
@@ -97,10 +105,10 @@
                                 <strong>🔄 自动选择:</strong> 优先使用 akshare，失败时自动降级到 baostock
                             </small>
                             <small class="text-muted d-block">
-                                <strong>🏦 baostock:</strong> 稳定可靠，适合批量下载和初学者
+                                <strong>🏦 baostock:</strong> 稳定可靠，适合单个股票分析
                             </small>
                             <small class="text-muted d-block">
-                                <strong>📊 akshare:</strong> 数据较新，包含更多技术指标，适合专业用户
+                                <strong>📊 akshare:</strong> 数据较新，包含更多技术指标，适合专业分析
                             </small>
                         </div>
                     </div>
@@ -121,19 +129,24 @@
                         </div>
                         <div class="alert alert-info mt-2">
                             <small>
-                                <strong>💡 建议:</strong> 建议下载2021-2025年的数据，其中2021-2024年用于训练，2025年用于验证
+                                <strong>💡 建议:</strong> 建议下载2021-2025年的数据，其中2021-2024年用于训练，2025年用于验证。单个股票分析建议选择较长时间范围以获得更好的模型效果。
                             </small>
                         </div>
                     </div>
                     
-                    <button class="btn btn-primary btn-lg" onclick="downloadData()" id="downloadBtn">
+                    <button class="btn btn-primary btn-lg" onclick="downloadSingleStock()" id="downloadBtn">
                         <i class="bi bi-download"></i> 开始下载
                     </button>
-                    <small class="text-muted d-block mt-2">点击开始下载股票数据</small>
+                    <small class="text-muted d-block mt-2">点击开始下载单个股票数据</small>
                 </div>
                 
                 <div class="col-md-6">
                     <h5>下载状态</h5>
+                    <div class="alert alert-info mb-3">
+                        <small>
+                            <strong>📊 单个股票分析模式:</strong> 输入股票代码后，系统将自动下载该股票的历史数据，包括开盘价、收盘价、最高价、最低价和成交量等信息。
+                        </small>
+                    </div>
                     <div id="downloadStatus">
                         <p class="text-muted">等待开始下载</p>
                     </div>
@@ -273,6 +286,15 @@
                     <p>将基于特征数据训练机器学习模型</p>
                     
                     <div class="mb-3">
+                        <label class="form-label">选择算法</label>
+                        <select class="form-select" id="algorithmSelect">
+                            <option value="random_forest">🌲 随机森林 (推荐)</option>
+                            <option value="xgboost">🚀 XGBoost (高性能)</option>
+                        </select>
+                        <small class="text-muted">选择机器学习算法，随机森林抗过拟合，XGBoost性能优秀</small>
+                    </div>
+                    
+                    <div class="mb-3">
                         <label class="form-label">交叉验证折数</label>
                         <select class="form-select" id="cvFolds">
                             <option value="3">3折 (快速)</option>
@@ -364,8 +386,8 @@
                     
                     <div class="mb-3">
                         <label class="form-label">手续费率</label>
-                        <input type="number" class="form-control" id="backtestCommission" value="0.0003" step="0.0001" min="0" max="0.01">
-                        <small class="text-muted">设置交易手续费率，默认0.03%</small>
+                        <input type="number" class="form-control" id="backtestCommission" value="0.0008" step="0.0001" min="0" max="0.01">
+                        <small class="text-muted">设置交易手续费率，默认0.08% (包含印花税、过户费等)</small>
                     </div>
                     
                     <div class="mb-3">

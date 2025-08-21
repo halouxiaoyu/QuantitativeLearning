@@ -20,8 +20,69 @@ function initializeApp() {
 
 // 绑定事件监听器
 function bindEventListeners() {
-    // 这里可以添加更多的事件绑定
+    // 股票代码输入框回车事件
+    const singleStockCodeInput = document.getElementById('singleStockCode');
+    if (singleStockCodeInput) {
+        singleStockCodeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                validateStockCode();
+            }
+        });
+    }
+    
     console.log('事件监听器已绑定');
+}
+
+
+
+// 验证股票代码
+function validateStockCode() {
+    const stockCode = document.getElementById('singleStockCode').value.trim();
+    const validationDiv = document.getElementById('stockCodeValidation');
+    
+    if (!stockCode) {
+        validationDiv.innerHTML = '<div class="alert alert-warning">请输入股票代码</div>';
+        return;
+    }
+    
+    // 显示验证中状态
+    validationDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> 验证中...</div>';
+    
+    fetch('/api/data/validate_stock', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ stock_code: stockCode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.validation.valid) {
+            const validation = data.validation;
+            validationDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> 股票代码有效！
+                    <br><strong>标准化代码:</strong> ${validation.normalized_code}
+                    <br><strong>交易所:</strong> ${validation.exchange}
+                    <br><strong>股票编号:</strong> ${validation.stock_number}
+                </div>
+            `;
+        } else {
+            validationDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i> 股票代码无效: ${data.validation?.error || data.error}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('验证股票代码失败:', error);
+        validationDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i> 验证失败: 网络错误
+            </div>
+        `;
+    });
 }
 
 // 检查系统状态
@@ -45,7 +106,7 @@ function checkSystemStatus() {
     checkBacktestStatus();
 }
 
-// 下载数据
+// 下载数据（股票池批量下载）
 function downloadData() {
     const poolName = document.getElementById('stockPool').value;
     const dataSource = document.getElementById('dataSource').value;
@@ -63,10 +124,10 @@ function downloadData() {
         return;
     }
     
-    console.log('开始下载数据:', { poolName, dataSource, startDate, endDate });
+    console.log('开始下载股票池数据:', { poolName, dataSource, startDate, endDate });
     
     document.getElementById('downloadProgress').style.display = 'block';
-    document.getElementById('downloadStatus').textContent = `开始下载 (数据源: ${dataSource}, 时间: ${startDate} 到 ${endDate})...`;
+    document.getElementById('downloadStatus').textContent = `开始下载股票池 (数据源: ${dataSource}, 时间: ${startDate} 到 ${endDate})...`;
     
     // 重置进度条
     const progressBar = document.getElementById('downloadProgressBar');
@@ -128,6 +189,102 @@ function downloadData() {
                 
                 // 保持进度条显示，但更新状态
                 document.getElementById('downloadStatusText').textContent = '数据下载完成，可以进行下一步操作';
+            }, 1000);
+        } else {
+            // 停止模拟进度
+            clearInterval(progressInterval);
+            alert('下载失败: ' + data.error);
+            document.getElementById('downloadProgress').style.display = 'none';
+        }
+    })
+    .catch(error => {
+        // 停止模拟进度
+        clearInterval(progressInterval);
+        console.error('下载错误:', error);
+        alert('网络错误: ' + error);
+        document.getElementById('downloadProgress').style.display = 'none';
+    });
+}
+
+// 下载单个股票数据
+function downloadSingleStock() {
+    const stockCode = document.getElementById('singleStockCode').value.trim();
+    const dataSource = document.getElementById('dataSource').value;
+    const startDate = document.getElementById('downloadStartDate').value;
+    const endDate = document.getElementById('downloadEndDate').value;
+    
+    // 验证股票代码
+    if (!stockCode) {
+        alert('请输入股票代码');
+        return;
+    }
+    
+    // 验证日期输入
+    if (!startDate || !endDate) {
+        alert('请选择开始和结束日期');
+        return;
+    }
+    
+    if (startDate >= endDate) {
+        alert('开始日期必须早于结束日期');
+        return;
+    }
+    
+    console.log('开始下载单个股票:', { stockCode, dataSource, startDate, endDate });
+    
+    document.getElementById('downloadProgress').style.display = 'block';
+    document.getElementById('downloadStatus').textContent = `开始下载股票 ${stockCode} (数据源: ${dataSource}, 时间: ${startDate} 到 ${endDate})...`;
+    
+    // 重置进度条
+    const progressBar = document.getElementById('downloadProgressBar');
+    progressBar.style.width = '0%';
+    
+    // 模拟进度 - 单个股票下载较快
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 20;
+        if (progress > 95) progress = 95;
+        
+        progressBar.style.width = progress + '%';
+        document.getElementById('downloadStatusText').textContent = `下载中... ${Math.round(progress)}%`;
+    }, 200);
+    
+    fetch('/api/data/download_single', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            stock_code: stockCode,
+            data_source: dataSource,
+            start_date: startDate.replace(/-/g, ''),
+            end_date: endDate.replace(/-/g, '')
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 停止模拟进度
+            clearInterval(progressInterval);
+            
+            // 确保进度条显示100%
+            const progressBar = document.getElementById('downloadProgressBar');
+            progressBar.style.width = '100%';
+            
+            // 更新状态显示
+            document.getElementById('downloadStatus').textContent = '下载完成！';
+            document.getElementById('downloadStatusText').textContent = '下载完成！';
+            
+            // 更新概览状态
+            document.getElementById('downloadOverview').innerHTML = `<span class="badge bg-success">股票 ${stockCode} 下载完成</span>`;
+            
+            setTimeout(() => {
+                checkDataStatus();
+                updateWorkflowStep(1, 'completed');
+                enableNextStep(2);
+                
+                // 保持进度条显示，但更新状态
+                document.getElementById('downloadStatusText').textContent = `股票 ${stockCode} 数据下载完成，可以进行下一步操作`;
             }, 1000);
         } else {
             // 停止模拟进度
@@ -275,6 +432,7 @@ function startModelTraining() {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+            algorithm: document.getElementById('algorithmSelect').value,
             cv_folds: parseInt(document.getElementById('cvFolds').value) || 5,
             random_seed: parseInt(document.getElementById('randomSeed').value) || 42,
             start_date: document.getElementById('trainingStartDate').value.replace(/-/g, ''),
@@ -924,45 +1082,55 @@ function updateModelStatus(data) {
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-6">
+                                    <small class="text-muted">算法</small><br>
+                                    <strong class="text-primary">${modelInfo.algorithm || 'Unknown'}</strong>
+                                </div>
+                                <div class="col-6">
                                     <small class="text-muted">训练日期</small><br>
                                     <strong>${modelInfo.training_date}</strong>
                                 </div>
+                            </div>
+                            <hr>
+                            <div class="row">
                                 <div class="col-6">
                                     <small class="text-muted">特征数量</small><br>
                                     <strong>${modelInfo.feature_count}</strong>
                                 </div>
-                            </div>
-                            <hr>
-                            <div class="row">
                                 <div class="col-6">
                                     <small class="text-muted">交叉验证准确率</small><br>
                                     <strong class="text-primary">${modelInfo.cv_accuracy}</strong>
                                 </div>
+                            </div>
+                            <div class="row">
                                 <div class="col-6">
                                     <small class="text-muted">测试集F1分数</small><br>
                                     <strong class="text-success">${modelInfo.test_f1}</strong>
                                 </div>
-                            </div>
-                            <hr>
-                            <div class="row">
                                 <div class="col-6">
                                     <small class="text-muted">训练集准确率</small><br>
                                     <strong class="text-info">${modelInfo.train_accuracy}</strong>
                                 </div>
+                            </div>
+                            <hr>
+                            <div class="row">
                                 <div class="col-6">
                                     <small class="text-muted">测试集准确率</small><br>
                                     <strong class="text-warning">${modelInfo.test_accuracy}</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">训练样本数</small><br>
+                                    <strong>${modelInfo.training_samples}</strong>
                                 </div>
                             </div>
                             <hr>
                             <div class="row">
                                 <div class="col-6">
-                                    <small class="text-muted">训练样本数</small><br>
-                                    <strong>${modelInfo.training_samples}</strong>
-                                </div>
-                                <div class="col-6">
                                     <small class="text-muted">测试样本数</small><br>
                                     <strong>${modelInfo.test_samples}</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted"></small><br>
+                                    <strong></strong>
                                 </div>
                             </div>
                         </div>

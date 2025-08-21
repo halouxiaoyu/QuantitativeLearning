@@ -124,6 +124,69 @@ def download_data():
         print(f"❌ 数据下载失败: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/data/download_single', methods=['POST'])
+def download_single_stock():
+    """下载单个股票数据"""
+    try:
+        data = request.get_json()
+        stock_code = data.get('stock_code', '').strip()
+        data_source = data.get('data_source', 'auto')
+        start_date = data.get('start_date', '20210101')
+        end_date = data.get('end_date', '20251231')
+        
+        if not stock_code:
+            return jsonify({'success': False, 'error': '请输入股票代码'})
+        
+        print(f"📥 开始下载单个股票: {stock_code}, 数据源={data_source}, 日期范围={start_date}-{end_date}")
+        
+        dm = DataManager()
+        
+        # 验证股票代码
+        validation = dm.validate_stock_code(stock_code)
+        if not validation['valid']:
+            return jsonify({'success': False, 'error': validation['error']})
+        
+        # 下载单个股票数据
+        result = dm.download_single_stock(stock_code, start_date, end_date, data_source)
+        
+        if result['status'] == 'success':
+            app.last_data_results = {stock_code: result}
+            return jsonify({
+                'success': True,
+                'message': f'股票 {stock_code} 数据下载完成！',
+                'result': result
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'股票 {stock_code} 下载失败: {result.get("error", "未知错误")}'
+            })
+        
+    except Exception as e:
+        print(f"❌ 单个股票下载失败: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/data/validate_stock', methods=['POST'])
+def validate_stock_code():
+    """验证股票代码格式"""
+    try:
+        data = request.get_json()
+        stock_code = data.get('stock_code', '').strip()
+        
+        if not stock_code:
+            return jsonify({'success': False, 'error': '请输入股票代码'})
+        
+        dm = DataManager()
+        validation = dm.validate_stock_code(stock_code)
+        
+        return jsonify({
+            'success': True,
+            'validation': validation
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/data/clear', methods=['POST'])
 def clear_all_data():
     """清空所有数据"""
@@ -275,6 +338,7 @@ def models_status():
                         
                         models_info[stock_dir] = {
                             'training_date': model_info.get('training_date', 'Unknown'),
+                            'algorithm': model_info.get('algorithm', 'Unknown'),
                             'feature_count': model_info.get('data_info', {}).get('feature_count', 0),
                             'cv_accuracy': f"{model_info.get('cv_scores', {}).get('mean', 0):.3f} ± {model_info.get('cv_scores', {}).get('std', 0):.3f}",
                             'train_accuracy': f"{model_info.get('training_metrics', {}).get('train_accuracy', 0):.3f}",
@@ -290,6 +354,7 @@ def models_status():
                         # 如果读取失败，至少显示有模型文件
                         models_info[stock_dir] = {
                             'training_date': 'Available',
+                            'algorithm': 'Unknown',
                             'feature_count': 'Unknown',
                             'cv_accuracy': 'N/A',
                             'cv_f1': 'N/A'
@@ -304,17 +369,34 @@ def models_status():
         print(f"Error in models_status: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/models/algorithms')
+def get_available_algorithms():
+    """获取可用的算法列表"""
+    try:
+        mt = ModelTrainer(
+            features_dir='features',
+            models_dir='models',
+            results_dir='results'
+        )
+        
+        algorithms = mt.get_available_algorithms()
+        return jsonify({'success': True, 'data': algorithms})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/models/train', methods=['POST'])
 def train_models():
     """训练模型"""
     try:
         data = request.get_json()
+        algorithm = data.get('algorithm', 'random_forest')
         cv_folds = int(data.get('cv_folds', 5))
         random_seed = int(data.get('random_seed', 42))
         start_date = data.get('start_date', '20230207')
         end_date = data.get('end_date', '20240601')
         
-        print(f"训练参数: cv_folds={cv_folds}, random_seed={random_seed}")
+        print(f"训练参数: algorithm={algorithm}, cv_folds={cv_folds}, random_seed={random_seed}")
         print(f"训练日期: {start_date} 到 {end_date}")
         
         mt = ModelTrainer(
@@ -324,6 +406,7 @@ def train_models():
         )
         
         results = mt.batch_train_models(
+            algorithm=algorithm,
             cv_folds=cv_folds,
             start_date=start_date,
             end_date=end_date,

@@ -13,12 +13,21 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # 机器学习相关
-from sklearn.linear_model import LogisticRegression
+
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import TimeSeriesSplit, cross_val_score
 from sklearn.metrics import accuracy_score, f1_score, classification_report, confusion_matrix
 import joblib
 import json
+
+# 尝试导入XGBoost
+try:
+    import xgboost as xgb
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    print("⚠️  XGBoost未安装，将使用随机森林作为备选")
 
 class ModelTrainer:
     """模型训练器"""
@@ -124,11 +133,9 @@ class ModelTrainer:
             raise ValueError("没有找到有效的特征列")
         
         X = training_data[feature_cols].values
-        y = (training_data['close'].shift(-1) > training_data['close']).astype(int)
         
-        # 移除最后一行（因为没有下一天的价格）
-        X = X[:-1]
-        y = y[:-1]
+        # 使用特征文件中的标签列（第二天涨跌幅，0.1%阈值）
+        y = training_data['label'].values
         
         # 移除包含NaN的行
         valid_mask = ~np.isnan(X).any(axis=1) & ~np.isnan(y)
@@ -156,9 +163,69 @@ class ModelTrainer:
             dates_combined = np.concatenate([feat.index[:len(X_train)], feat.index[len(X_train):len(X_train)+len(X_test)]])
             return X_combined, y_combined, feature_cols, dates_combined
     
-    def train_model(self, stock_code, cv_folds=5, start_date=None, end_date=None, test_ratio=None):
-        """训练模型，使用默认时间划分"""
+    def get_available_algorithms(self):
+        """获取可用的算法列表"""
+        algorithms = {
+            'random_forest': {
+                'name': '随机森林',
+                'description': '集成学习，抗过拟合，适合复杂数据',
+                'available': True
+            },
+            'xgboost': {
+                'name': 'XGBoost',
+                'description': '梯度提升，性能优秀，适合结构化数据',
+                'available': XGBOOST_AVAILABLE
+            }
+        }
+        return algorithms
+    
+    def create_model(self, algorithm='random_forest', random_seed=42):
+        """根据算法名称创建模型
+        
+        Args:
+            algorithm: 算法名称 ('random_forest', 'xgboost')
+            random_seed: 随机种子
+            
+        Returns:
+            训练好的模型
+        """
+        if algorithm == 'random_forest':
+            print("🌲 使用随机森林模型")
+            return RandomForestClassifier(
+                n_estimators=100,
+                max_depth=10,
+                min_samples_split=5,
+                min_samples_leaf=2,
+                random_state=random_seed,
+                n_jobs=-1
+            )
+        
+        elif algorithm == 'xgboost' and XGBOOST_AVAILABLE:
+            print("🚀 使用XGBoost模型")
+            return xgb.XGBClassifier(
+                n_estimators=100,
+                max_depth=6,
+                learning_rate=0.1,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                random_state=random_seed,
+                n_jobs=-1
+            )
+        
+        else:
+            if algorithm == 'xgboost' and not XGBOOST_AVAILABLE:
+                print("⚠️  XGBoost不可用，自动切换到随机森林")
+                algorithm = 'random_forest'
+            else:
+                print(f"⚠️  未知算法 '{algorithm}'，使用随机森林")
+                algorithm = 'random_forest'
+            
+            return self.create_model('random_forest', random_seed)
+    
+    def train_model(self, stock_code, algorithm='random_forest', cv_folds=5, start_date=None, end_date=None, test_ratio=None, random_seed=42):
+        """训练模型，使用指定的算法和时间划分"""
         print(f"🤖 开始训练模型: {stock_code}")
+        print(f"🧠 使用算法: {algorithm}")
         print("=" * 60)
         
         try:
@@ -174,10 +241,10 @@ class ModelTrainer:
             X_test_scaled = scaler.transform(X_test)
             
             # 3. 模型训练
-            print("🎯 训练逻辑回归模型...")
-            # 使用传入的随机种子或默认值
-            random_seed = getattr(self, 'random_seed', 42)
-            model = LogisticRegression(random_state=random_seed, max_iter=1000)
+            print(f"🎯 训练{self.get_available_algorithms()[algorithm]['name']}模型...")
+            
+            # 创建指定算法的模型
+            model = self.create_model(algorithm, random_seed)
             
             # 时间序列交叉验证
             tscv = TimeSeriesSplit(n_splits=cv_folds)
@@ -207,6 +274,7 @@ class ModelTrainer:
             # 5. 保存模型和结果
             self._save_model_and_results(stock_code, model, scaler, feature_cols, {
                 'training_date': datetime.now().strftime("%Y%m%d_%H%M%S"),
+                'algorithm': algorithm,
                 'cv_scores': {
                     'mean': float(cv_scores.mean()),
                     'std': float(cv_scores.std()),
@@ -317,8 +385,17 @@ class ModelTrainer:
         
         print(f"📄 训练报告已生成: {os.path.basename(report_path)}")
     
-    def batch_train_models(self, stock_list=None, cv_folds=5, start_date=None, end_date=None, random_seed=42):
-        """批量训练多个股票的模型"""
+    def batch_train_models(self, stock_list=None, algorithm='random_forest', cv_folds=5, start_date=None, end_date=None, random_seed=42):
+        """批量训练多个股票的模型
+        
+        Args:
+            stock_list: 股票列表
+            algorithm: 算法选择 ('logistic', 'random_forest', 'xgboost')
+            cv_folds: 交叉验证折数
+            start_date: 训练开始日期
+            end_date: 训练结束日期
+            random_seed: 随机种子
+        """
         if stock_list is None:
             # 从特征目录获取股票列表
             if os.path.exists(self.features_dir):
@@ -337,6 +414,7 @@ class ModelTrainer:
         
         print(f"🚀 批量训练模型: {len(stock_list)} 只股票")
         print("=" * 60)
+        print(f"🧠 使用算法: {algorithm}")
         print(f"📅 训练时间: {training_start} 到 {training_end}")
         print(f"📅 验证时间: {self.default_time_config['validation_start']} 到 {self.default_time_config['validation_end']}")
         print(f"🎲 随机种子: {random_seed}")
@@ -359,7 +437,7 @@ class ModelTrainer:
                     }
                     continue
                 
-                success = self.train_model(stock_code, cv_folds, training_start, training_end)
+                success = self.train_model(stock_code, algorithm, cv_folds, training_start, training_end, random_seed=random_seed)
                 
                 if success:
                     results[stock_code] = {

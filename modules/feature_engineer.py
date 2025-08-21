@@ -53,103 +53,142 @@ class FeatureEngineer:
             return None
     
     def build_features(self, df):
-        """构建技术指标特征"""
+        """构建技术指标特征（优化版本，只保留最重要的20个特征）"""
         if df is None or df.empty:
             return None
         
-        print(f"🔧 构建特征: {len(df)} 条记录")
+        print(f"🔧 构建优化特征: {len(df)} 条记录")
+        print("💡 只保留最重要的20个特征，减少噪音，提高模型性能")
         
         # 复制数据，避免修改原始数据
         feat = df.copy()
         
-        # 1. 价格变化率
+        # 基于特征重要性分析，只保留最重要的20个特征
+        
+        # 1. 价格变化率 (最重要)
         feat['pct_change'] = feat['close'].pct_change()
         
-        # 2. 移动平均线
+        # 2. 移动平均线 (核心趋势指标)
         feat['ma5'] = feat['close'].rolling(window=5).mean()
         feat['ma10'] = feat['close'].rolling(window=10).mean()
         feat['ma20'] = feat['close'].rolling(window=20).mean()
         
-        # 3. 价格与移动平均线的比率
+        # 3. 价格与移动平均线的比率 (相对位置)
         feat['ma5_ratio'] = feat['close'] / feat['ma5']
         feat['ma10_ratio'] = feat['close'] / feat['ma10']
         feat['ma20_ratio'] = feat['close'] / feat['ma20']
         
-        # 4. MACD指标
+        # 4. 指数移动平均线 (MACD基础)
         feat['ema12'] = feat['close'].ewm(span=12).mean()
         feat['ema26'] = feat['close'].ewm(span=26).mean()
+        
+        # 5. MACD指标 (趋势动量)
         feat['macd_dif'] = feat['ema12'] - feat['ema26']
         feat['macd_dea'] = feat['macd_dif'].ewm(span=9).mean()
-        feat['macd_hist'] = feat['macd_dif'] - feat['macd_dea']
         
-        # 5. RSI指标
-        feat['rsi14'] = self._calculate_rsi(feat['close'], window=14)
-        
-        # 6. 波动率指标
-        feat['volatility_10'] = feat['pct_change'].rolling(window=10).std()
-        feat['volatility_20'] = feat['pct_change'].rolling(window=20).std()
-        
-        # 7. 成交量指标
+        # 6. 成交量指标 (市场活跃度)
         feat['volume_ma5'] = feat['volume'].rolling(window=5).mean()
-        feat['volume_ratio'] = feat['volume'] / feat['volume_ma5']
         
-        # 8. 布林带
+        # 7. 布林带 (价格波动范围)
         feat['bb_upper'] = feat['ma20'] + 2 * feat['close'].rolling(window=20).std()
         feat['bb_lower'] = feat['ma20'] - 2 * feat['close'].rolling(window=20).std()
-        feat['bb_position'] = (feat['close'] - feat['bb_lower']) / (feat['bb_upper'] - feat['bb_lower'])
         
-        # 9. 动量指标
-        feat['momentum_5'] = feat['close'] / feat['close'].shift(5) - 1
-        feat['momentum_10'] = feat['close'] / feat['close'].shift(10) - 1
-        
-        # 10. 价格位置指标
+        # 8. 价格位置指标 (日内波动)
         feat['high_low_ratio'] = (feat['high'] - feat['low']) / feat['close']
-        feat['open_close_ratio'] = feat['open'] / feat['close']
         
-        # 11. 趋势指标
+        # 9. 趋势指标 (短期趋势)
         feat['trend_5'] = np.where(feat['ma5'] > feat['ma5'].shift(1), 1, -1)
-        feat['trend_10'] = np.where(feat['ma10'] > feat['ma10'].shift(1), 1, -1)
-        feat['trend_20'] = np.where(feat['ma20'] > feat['ma20'].shift(1), 1, -1)
         
-        # 12. 交叉信号
-        feat['ma5_cross_ma10'] = np.where(
-            (feat['ma5'] > feat['ma10']) & (feat['ma5'].shift(1) <= feat['ma10'].shift(1)), 1, 0)
-        feat['ma10_cross_ma20'] = np.where(
-            (feat['ma10'] > feat['ma20']) & (feat['ma10'].shift(1) <= feat['ma20'].shift(1)), 1, 0)
-        
-        # 13. 支撑阻力位
+        # 10. 支撑阻力位 (价格边界)
         feat['support_level'] = feat['low'].rolling(window=20).min()
         feat['resistance_level'] = feat['high'].rolling(window=20).max()
-        feat['support_distance'] = (feat['close'] - feat['support_level']) / feat['close']
-        feat['resistance_distance'] = (feat['resistance_level'] - feat['close']) / feat['close']
         
-        # 14. 价格通道
+        # 11. 价格通道 (价格范围)
         feat['price_channel_high'] = feat['high'].rolling(window=20).max()
         feat['price_channel_low'] = feat['low'].rolling(window=20).min()
-        feat['price_channel_position'] = (feat['close'] - feat['price_channel_low']) / (feat['price_channel_high'] - feat['price_channel_low'])
         
-        # 15. 成交量价格关系
-        feat['volume_price_trend'] = (feat['volume'] * feat['pct_change']).rolling(window=10).sum()
-        
-        # 16. 价格变化率特征（新增）
+        # 12. 价格变化率特征 (多周期)
         feat['price_change'] = feat['close'].pct_change()
         feat['price_change_2'] = feat['close'].pct_change(2)
-        feat['price_change_5'] = feat['close'].pct_change(5)
         
-        # 17. 成交量变化特征（新增）
+        # 13. 成交量变化特征 (市场情绪)
         feat['volume_change'] = feat['volume'].pct_change()
+        feat['volume_ratio'] = feat['volume'] / feat['volume'].rolling(5).mean()
+        
+        # 14. 波动率指标 (市场风险)
+        feat['volatility_10'] = feat['pct_change'].rolling(window=10).std()
+        
+        # 15. RSI指标 (超买超卖)
+        feat['rsi14'] = self._calculate_rsi(feat['close'], window=14)
+        
+        # 16. 成交量价格关系 (价量配合)
+        feat['volume_price_trend'] = (feat['volume'] * feat['pct_change']).rolling(window=10).sum()
+        
+        # 17. 价格通道位置 (相对位置)
+        feat['price_channel_position'] = (feat['close'] - feat['price_channel_low']) / (feat['price_channel_high'] - feat['price_channel_low'])
+        
+        # 18. 布林带位置 (价格在布林带中的位置)
+        feat['bb_position'] = (feat['close'] - feat['bb_lower']) / (feat['bb_upper'] - feat['bb_lower'])
+        
+        # 19. 开盘收盘比率 (日内走势)
+        feat['open_close_ratio'] = feat['open'] / feat['close']
+        
+        # 20. 成交量移动平均比率 (成交量趋势)
         feat['volume_ma_ratio'] = feat['volume'] / feat['volume'].rolling(5).mean()
         
         # 移除包含NaN的行
         initial_count = len(feat)
         feat = feat.dropna()
+        
+        # 保留必要的价格数据用于生成标签，同时保留技术指标特征
+        # 基于特征重要性分析的结果，只保留最重要的18个特征
+        optimal_features = [
+            'pct_change',      # 价格变化率 (最重要)
+            'ma5',             # 5日移动平均 (短期趋势)
+            'ma10',            # 10日移动平均 (中期趋势)
+            'ma20',            # 20日移动平均 (长期趋势)
+            'ma5_ratio',       # 价格与5日均线比率 (相对位置)
+            'ma10_ratio',      # 价格与10日均线比率 (相对位置)
+            'ma20_ratio',      # 价格与20日均线比率 (相对位置)
+            'ema12',           # 12日指数移动平均 (MACD基础)
+            'ema26',           # 26日指数移动平均 (MACD基础)
+            'macd_dif',        # MACD差值 (趋势动量)
+            'macd_dea',        # MACD信号线 (趋势确认)
+            'volume_ma5',      # 成交量5日均线 (市场活跃度)
+            'volume_ratio',    # 成交量比率 (市场活跃度)
+            'bb_upper',        # 布林带上轨 (价格波动范围)
+            'bb_lower',        # 布林带下轨 (价格波动范围)
+            'high_low_ratio',  # 高低价比率 (日内波动)
+            'trend_5',         # 5日趋势 (短期方向)
+            'volatility_10'    # 10日波动率 (市场风险)
+        ]
+        
+        # 确保所有最优特征都存在
+        available_features = [f for f in optimal_features if f in feat.columns]
+        
+        # 保留原始OHLCV数据（用于回测）和技术指标特征
+        final_features = ['open', 'high', 'low', 'close', 'volume'] + available_features
+        feat = feat[final_features]
+        
         print(f"   特征构建完成: {initial_count} -> {len(feat)} 条记录")
+        print(f"   🎯 最终特征数量: {len(feat.columns)} (包含close价格 + {len(available_features)}个技术指标)")
+        print(f"   📋 技术指标列表: {available_features}")
+        
+        # 添加标签列：预测第二天的涨跌，0.1%阈值
+        # 计算第二天的价格相对于当前价格的涨跌幅
+        feat['price_next_day'] = feat['close'].shift(-1)
+        feat['pct_change_next_day'] = (feat['price_next_day'] - feat['close']) / feat['close']
+        feat['label'] = (feat['pct_change_next_day'] > 0.001).astype(int)
+        
+        # 移除最后1行（因为没有第二天的价格数据）
+        feat = feat.iloc[:-1]
         
         # 添加元数据
         feat.attrs['stock_code'] = df.attrs.get('stock_code', 'unknown')
         feat.attrs['feature_count'] = len(feat.columns)
         feat.attrs['feature_names'] = list(feat.columns)
         feat.attrs['build_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        feat.attrs['optimization_note'] = f'使用特征选择优化，保留OHLCV价格数据和{len(available_features)}个最重要的技术指标特征，预测第二天涨跌，包含标签列'
         
         return feat
     

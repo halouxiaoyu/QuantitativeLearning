@@ -412,6 +412,172 @@ class DataManager:
         print(f"\n🎉 批量下载完成! 成功: {success_count}/{len(stock_list)}")
         return results
     
+    def download_single_stock(self, stock_code, start_date='20200101', end_date=None, data_source='auto'):
+        """下载单个股票数据（支持用户输入股票代码）
+        
+        Args:
+            stock_code: 股票代码（支持多种格式）
+            start_date: 开始日期
+            end_date: 结束日期
+            data_source: 数据源选择 ('baostock', 'akshare', 'auto')
+        
+        Returns:
+            dict: 包含下载结果的字典
+        """
+        if end_date is None:
+            end_date = datetime.now().strftime('%Y%m%d')
+        
+        # 标准化股票代码格式
+        normalized_code = self._normalize_stock_code(stock_code)
+        
+        print(f"📥 开始下载单个股票: {stock_code} -> {normalized_code}")
+        print(f"   日期范围: {start_date} 到 {end_date}")
+        print(f"   数据源: {data_source}")
+        
+        # 下载数据
+        df_raw = self.download_stock_data(normalized_code, start_date, end_date, data_source)
+        
+        if df_raw is not None and not df_raw.empty:
+            # 保存原始数据
+            raw_saved = self.save_data(df_raw, normalized_code, 'raw')
+            
+            # 清洗数据
+            df_cleaned = self.clean_data(df_raw, normalized_code)
+            
+            if df_cleaned is not None:
+                # 保存清洗后的数据
+                cleaned_saved = self.save_data(df_cleaned, normalized_code, 'cleaned')
+                
+                return {
+                    'status': 'success',
+                    'stock_code': normalized_code,
+                    'original_code': stock_code,
+                    'raw_records': len(df_raw),
+                    'cleaned_records': len(df_cleaned),
+                    'date_range': f"{df_cleaned.index.min().strftime('%Y-%m-%d')} 到 {df_cleaned.index.max().strftime('%Y-%m-%d')}",
+                    'raw_saved': raw_saved,
+                    'cleaned_saved': cleaned_saved,
+                    'data_source': data_source
+                }
+            else:
+                return {
+                    'status': 'error',
+                    'stock_code': normalized_code,
+                    'original_code': stock_code,
+                    'error': '数据清洗失败'
+                }
+        else:
+            return {
+                'status': 'error',
+                'stock_code': normalized_code,
+                'original_code': stock_code,
+                'error': '数据下载失败'
+            }
+    
+    def _normalize_stock_code(self, stock_code):
+        """标准化股票代码格式
+        
+        支持多种输入格式：
+        - 600000 (上海)
+        - 000001 (深圳)
+        - sh600000
+        - sz000001
+        - 600000.SH
+        - 000001.SZ
+        - sh.600000
+        - sz.000001
+        """
+        # 移除空格和特殊字符
+        stock_code = str(stock_code).strip().upper()
+        
+        # 如果已经是标准格式，直接返回
+        if stock_code.startswith('sh.') or stock_code.startswith('sz.'):
+            # 验证格式是否正确
+            if '.' in stock_code and len(stock_code.split('.')[1]) == 6:
+                return stock_code
+            # 如果格式不正确，继续处理
+        
+        # 处理 600000.SH 格式
+        if stock_code.endswith('.SH'):
+            return f"sh.{stock_code[:-3]}"
+        elif stock_code.endswith('.SZ'):
+            return f"sz.{stock_code[:-3]}"
+        
+        # 处理 sh600000 格式
+        if stock_code.startswith('SH') and len(stock_code) > 2:
+            return f"sh.{stock_code[2:]}"
+        elif stock_code.startswith('SZ') and len(stock_code) > 2:
+            return f"sz.{stock_code[2:]}"
+        
+        # 处理纯数字格式，根据规则判断
+        if stock_code.isdigit():
+            if len(stock_code) == 6:
+                # 上海股票：600xxx, 601xxx, 603xxx, 605xxx, 688xxx
+                if stock_code.startswith(('600', '601', '603', '605', '688')):
+                    return f"sh.{stock_code}"
+                # 深圳股票：000xxx, 002xxx, 300xxx
+                elif stock_code.startswith(('000', '002', '300')):
+                    return f"sz.{stock_code}"
+                else:
+                    # 默认按上海处理
+                    return f"sh.{stock_code}"
+        
+        # 如果无法识别，保持原样
+        return stock_code
+    
+    def validate_stock_code(self, stock_code):
+        """验证股票代码是否有效
+        
+        Args:
+            stock_code: 股票代码
+            
+        Returns:
+            dict: 验证结果
+        """
+        normalized_code = self._normalize_stock_code(stock_code)
+        
+        # 基本格式验证
+        if not (normalized_code.startswith('sh.') or normalized_code.startswith('sz.')):
+            return {
+                'valid': False,
+                'error': '股票代码格式无效，无法识别交易所'
+            }
+        
+        # 提取数字部分
+        try:
+            stock_number = normalized_code.split('.')[1]
+            if not stock_number.isdigit() or len(stock_number) != 6:
+                return {
+                    'valid': False,
+                    'error': '股票代码数字部分必须是6位数字'
+                }
+        except IndexError:
+            return {
+                'valid': False,
+                'error': '股票代码格式错误'
+            }
+        
+        # 交易所特定验证
+        if normalized_code.startswith('sh.'):
+            if not stock_number.startswith(('600', '601', '603', '605', '688')):
+                return {
+                    'valid': False,
+                    'error': '上海交易所股票代码应以600、601、603、605或688开头'
+                }
+        elif normalized_code.startswith('sz.'):
+            if not stock_number.startswith(('000', '002', '300')):
+                return {
+                    'valid': False,
+                    'error': '深圳交易所股票代码应以000、002或300开头'
+                }
+        
+        return {
+            'valid': True,
+            'normalized_code': normalized_code,
+            'exchange': '上海' if normalized_code.startswith('sh.') else '深圳',
+            'stock_number': stock_number
+        }
+
     def get_stock_list(self, pool_name='all'):
         """获取股票列表"""
         if pool_name in self.stock_pools:
@@ -419,6 +585,169 @@ class DataManager:
         else:
             print(f"❌ 股票池 '{pool_name}' 不存在")
             return []
+    
+    def download_single_stock(self, stock_code, start_date='20200101', end_date=None, data_source='auto'):
+        """下载单个股票数据（支持用户输入股票代码）
+        
+        Args:
+            stock_code: 股票代码（支持多种格式）
+            start_date: 开始日期
+            end_date: 结束日期
+            data_source: 数据源选择 ('baostock', 'akshare', 'auto')
+        
+        Returns:
+            dict: 包含下载结果的字典
+        """
+        if end_date is None:
+            end_date = datetime.now().strftime('%Y%m%d')
+        
+        # 标准化股票代码格式
+        normalized_code = self._normalize_stock_code(stock_code)
+        
+        print(f"📥 开始下载单个股票: {stock_code} -> {normalized_code}")
+        print(f"   日期范围: {start_date} 到 {end_date}")
+        print(f"   数据源: {data_source}")
+        
+        # 下载数据
+        df_raw = self.download_stock_data(normalized_code, start_date, end_date, data_source)
+        
+        if df_raw is not None and not df_raw.empty:
+            # 保存原始数据
+            raw_saved = self.save_data(df_raw, normalized_code, 'raw')
+            
+            # 清洗数据
+            df_cleaned = self.clean_data(df_raw, normalized_code)
+            
+            if df_cleaned is not None:
+                # 保存清洗后的数据
+                cleaned_saved = self.save_data(df_cleaned, normalized_code, 'cleaned')
+                
+                return {
+                    'status': 'success',
+                    'stock_code': normalized_code,
+                    'original_code': stock_code,
+                    'raw_records': len(df_raw),
+                    'cleaned_records': len(df_cleaned),
+                    'date_range': f"{df_cleaned.index.min().strftime('%Y-%m-%d')} 到 {df_cleaned.index.max().strftime('%Y-%m-%d')}",
+                    'raw_saved': raw_saved,
+                    'cleaned_saved': cleaned_saved,
+                    'data_source': data_source
+                }
+            else:
+                return {
+                    'status': 'error',
+                    'stock_code': normalized_code,
+                    'original_code': stock_code,
+                    'error': '数据清洗失败'
+                }
+        else:
+            return {
+                'status': 'error',
+                'stock_code': normalized_code,
+                'original_code': stock_code,
+                'error': '数据下载失败'
+            }
+    
+    def _normalize_stock_code(self, stock_code):
+        """标准化股票代码格式
+        
+        支持多种输入格式：
+        - 600000 (上海)
+        - 000001 (深圳)
+        - sh600000
+        - sz000001
+        - 600000.SH
+        - 000001.SZ
+        - sh.600000
+        - sz.000001
+        """
+        # 移除空格和特殊字符
+        stock_code = str(stock_code).strip().upper()
+        
+        # 如果已经是标准格式，直接返回
+        if stock_code.startswith('sh.') or stock_code.startswith('sz.'):
+            return stock_code
+        
+        # 处理 600000.SH 格式
+        if stock_code.endswith('.SH'):
+            return f"sh.{stock_code[:-3]}"
+        elif stock_code.endswith('.SZ'):
+            return f"sz.{stock_code[:-3]}"
+        
+        # 处理 sh600000 格式
+        if stock_code.startswith('SH') and len(stock_code) > 2:
+            return f"sh.{stock_code[2:]}"
+        elif stock_code.startswith('SZ') and len(stock_code) > 2:
+            return f"sz.{stock_code[2:]}"
+        
+        # 处理纯数字格式，根据规则判断
+        if stock_code.isdigit():
+            if len(stock_code) == 6:
+                # 上海股票：600xxx, 601xxx, 603xxx, 605xxx, 688xxx
+                if stock_code.startswith(('600', '601', '603', '605', '688')):
+                    return f"sh.{stock_code}"
+                # 深圳股票：000xxx, 002xxx, 300xxx
+                elif stock_code.startswith(('000', '002', '300')):
+                    return f"sz.{stock_code}"
+                else:
+                    # 默认按上海处理
+                    return f"sh.{stock_code}"
+        
+        # 如果无法识别，保持原样
+        return stock_code
+    
+    def validate_stock_code(self, stock_code):
+        """验证股票代码是否有效
+        
+        Args:
+            stock_code: 股票代码
+            
+        Returns:
+            dict: 验证结果
+        """
+        normalized_code = self._normalize_stock_code(stock_code)
+        
+        # 基本格式验证
+        if not (normalized_code.startswith('sh.') or normalized_code.startswith('sz.')):
+            return {
+                'valid': False,
+                'error': '股票代码格式无效，无法识别交易所'
+            }
+        
+        # 提取数字部分
+        try:
+            stock_number = normalized_code.split('.')[1]
+            if not stock_number.isdigit() or len(stock_number) != 6:
+                return {
+                    'valid': False,
+                    'error': '股票代码数字部分必须是6位数字'
+                }
+        except IndexError:
+            return {
+                'valid': False,
+                'error': '股票代码格式错误'
+            }
+        
+        # 交易所特定验证
+        if normalized_code.startswith('sh.'):
+            if not stock_number.startswith(('600', '601', '603', '605', '688')):
+                return {
+                    'valid': False,
+                    'error': '上海交易所股票代码应以600、601、603、605或688开头'
+                }
+        elif normalized_code.startswith('sz.'):
+            if not stock_number.startswith(('000', '002', '300')):
+                return {
+                    'valid': False,
+                    'error': '深圳交易所股票代码应以000、002或300开头'
+                }
+        
+        return {
+            'valid': True,
+            'normalized_code': normalized_code,
+            'exchange': '上海' if normalized_code.startswith('sh.') else '深圳',
+            'stock_number': stock_number
+        }
 
 def main():
     """主函数"""
