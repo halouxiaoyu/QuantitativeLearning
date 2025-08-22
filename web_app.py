@@ -144,22 +144,22 @@ def download_single_stock():
         # 验证股票代码
         validation = dm.validate_stock_code(stock_code)
         if not validation['valid']:
-            return jsonify({'success': False, 'error': validation['error']})
+            return jsonify({'success': False, 'error': f'股票代码验证失败：{validation["error"]}\n💡 请检查代码是否正确，或尝试其他格式'})
         
         # 下载单个股票数据
         result = dm.download_single_stock(stock_code, start_date, end_date, data_source)
         
         if result['status'] == 'success':
-            app.last_data_results = {stock_code: result}
+            normalized_code = validation.get('normalized_code', stock_code)
+            app.last_data_results = {normalized_code: result}
             return jsonify({
                 'success': True,
-                'message': f'股票 {stock_code} 数据下载完成！',
+                'message': f'✅ 股票 {normalized_code} 数据下载完成！\n📊 数据范围：{start_date} 到 {end_date}\n💾 已保存到本地',
                 'result': result
             })
         else:
             return jsonify({
-                'success': False,
-                'error': f'股票 {stock_code} 下载失败: {result.get("error", "未知错误")}'
+                'success': False, 'error': f'❌ 股票 {stock_code} 下载失败\n🔍 错误详情：{result.get("error", "未知错误")}\n💡 请检查网络连接或稍后重试'
             })
         
     except Exception as e:
@@ -179,10 +179,28 @@ def validate_stock_code():
         dm = DataManager()
         validation = dm.validate_stock_code(stock_code)
         
-        return jsonify({
-            'success': True,
-            'validation': validation
-        })
+        # 优化验证结果提示
+        if validation['valid']:
+            normalized_code = validation.get('normalized_code', stock_code)
+            exchange_info = {
+                'sh.': '上海证券交易所',
+                'sz.': '深圳证券交易所',
+                'bj.': '北京证券交易所'
+            }
+            exchange = next((info for prefix, info in exchange_info.items() if normalized_code.startswith(prefix)), '未知交易所')
+            board = validation.get('board', '未知板块')
+            
+            return jsonify({
+                'success': True,
+                'validation': validation,
+                'user_friendly_message': f'✅ 股票代码有效！\n📊 标准格式：{normalized_code}\n🏢 交易所：{exchange}\n📈 板块：{board}'
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'validation': validation,
+                'user_friendly_message': f'❌ 股票代码无效：{validation.get("error", "未知错误")}'
+            })
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

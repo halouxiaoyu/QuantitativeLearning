@@ -73,25 +73,24 @@
             <div class="row">
                 <div class="col-md-6">
                     <h5>单个股票分析</h5>
-                    <div class="mb-3">
-                        <label for="singleStockCode" class="form-label">股票代码</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="singleStockCode" 
-                                   placeholder="输入股票代码，如：600000、000001、sh600000等" 
-                                   maxlength="10">
-                            <button class="btn btn-outline-secondary" type="button" onclick="validateStockCode()">
-                                <i class="bi bi-check-circle"></i> 验证
-                            </button>
+                                            <div class="mb-3">
+                            <label for="singleStockCode" class="form-label">股票代码</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="singleStockCode" 
+                                       placeholder="直接输入股票代码，如：600000、000001、002850等" 
+                                       maxlength="10">
+                                <button class="btn btn-outline-secondary" type="button" onclick="validateStockCode()">
+                                    <i class="bi bi-check-circle"></i> 验证
+                                </button>
+                            </div>
+                            <div id="stockCodeValidation" class="mt-2"></div>
+                            <small class="text-muted">
+                                <strong>💡 简化输入:</strong><br>
+                                • 直接输入纯数字代码即可，如：600000、000001、002850<br>
+                                • 系统会自动识别交易所（上海、深圳、创业板）<br>
+                                • 也支持带前缀格式：sh600000、sz000001等
+                            </small>
                         </div>
-                        <div id="stockCodeValidation" class="mt-2"></div>
-                        <small class="text-muted">
-                            <strong>支持的格式:</strong><br>
-                            • 纯数字: 600000 (自动识别交易所)<br>
-                            • 带前缀: sh600000, sz000001<br>
-                            • 带后缀: 600000.SH, 000001.SZ<br>
-                            • 标准格式: sh.600000, sz.000001
-                        </small>
-                    </div>
                     
                     <div class="mb-3">
                         <h5>选择数据源</h5>
@@ -518,8 +517,8 @@
                     
                     <div class="mb-3">
                         <label class="form-label">股票代码</label>
-                        <input type="text" class="form-control" id="futureStockCode" placeholder="例如: sh.600000">
-                        <small class="text-muted">输入要预测的股票代码</small>
+                        <input type="text" class="form-control" id="futureStockCode" placeholder="直接输入股票代码，如：600000、000001、002850">
+                        <small class="text-muted">直接输入股票代码即可，系统自动识别交易所</small>
                     </div>
                     
                     <div class="mb-3">

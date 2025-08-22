@@ -518,12 +518,43 @@ class DataManager:
                 # 深圳股票：000xxx, 002xxx, 300xxx
                 elif stock_code.startswith(('000', '002', '300')):
                     return f"sz.{stock_code}"
+                # 创业板股票：301xxx (新增)
+                elif stock_code.startswith('301'):
+                    return f"sz.{stock_code}"
                 else:
                     # 默认按上海处理
                     return f"sh.{stock_code}"
         
         # 如果无法识别，保持原样
         return stock_code
+    
+    def _get_board_info(self, normalized_code):
+        """获取股票所属板块信息"""
+        if not normalized_code.startswith(('sh.', 'sz.')):
+            return '未知'
+        
+        stock_number = normalized_code.split('.')[1]
+        
+        if normalized_code.startswith('sh.'):
+            if stock_number.startswith('688'):
+                return '科创板'
+            elif stock_number.startswith(('600', '601', '603', '605')):
+                return '主板'
+            else:
+                return '主板'
+        elif normalized_code.startswith('sz.'):
+            if stock_number.startswith('300'):
+                return '创业板'
+            elif stock_number.startswith('301'):
+                return '创业板'
+            elif stock_number.startswith('000'):
+                return '主板'
+            elif stock_number.startswith('002'):
+                return '中小板'
+            else:
+                return '主板'
+        
+        return '未知'
     
     def validate_stock_code(self, stock_code):
         """验证股票代码是否有效
@@ -565,17 +596,18 @@ class DataManager:
                     'error': '上海交易所股票代码应以600、601、603、605或688开头'
                 }
         elif normalized_code.startswith('sz.'):
-            if not stock_number.startswith(('000', '002', '300')):
+            if not stock_number.startswith(('000', '002', '300', '301')):
                 return {
                     'valid': False,
-                    'error': '深圳交易所股票代码应以000、002或300开头'
+                    'error': '深圳交易所股票代码应以000、002、300或301开头'
                 }
         
         return {
             'valid': True,
             'normalized_code': normalized_code,
             'exchange': '上海' if normalized_code.startswith('sh.') else '深圳',
-            'stock_number': stock_number
+            'stock_number': stock_number,
+            'board': self._get_board_info(normalized_code)
         }
 
     def get_stock_list(self, pool_name='all'):

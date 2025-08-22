@@ -127,7 +127,7 @@ class ModelTrainer:
         print(f"📅 实际训练范围: {training_data.index.min().strftime('%Y-%m-%d')} 到 {training_data.index.max().strftime('%Y-%m-%d')}")
         
         # 准备特征和标签
-        feature_cols = [col for col in training_data.columns if col not in ['open', 'high', 'low', 'close', 'volume']]
+        feature_cols = [col for col in training_data.columns if col not in ['open', 'high', 'low', 'close', 'volume', 'price_next_day', 'pct_change_next_day', 'label']]
         
         if len(feature_cols) == 0:
             raise ValueError("没有找到有效的特征列")
@@ -192,10 +192,13 @@ class ModelTrainer:
         if algorithm == 'random_forest':
             print("🌲 使用随机森林模型")
             return RandomForestClassifier(
-                n_estimators=100,
-                max_depth=10,
-                min_samples_split=5,
-                min_samples_leaf=2,
+                n_estimators=200,  # 增加树的数量，提高稳定性
+                max_depth=5,  # 减少深度，防止过拟合
+                min_samples_split=10,  # 增加分裂所需的最小样本数
+                min_samples_leaf=5,  # 增加叶节点最小样本数
+                max_features='sqrt',  # 特征采样，提高泛化能力
+                bootstrap=True,  # 启用bootstrap采样
+                oob_score=True,  # 启用袋外评分
                 random_state=random_seed,
                 n_jobs=-1
             )
@@ -204,10 +207,13 @@ class ModelTrainer:
             print("🚀 使用XGBoost模型")
             return xgb.XGBClassifier(
                 n_estimators=100,
-                max_depth=6,
-                learning_rate=0.1,
-                subsample=0.8,
-                colsample_bytree=0.8,
+                max_depth=3,  # 减少深度，防止过拟合
+                min_child_weight=5,  # 增加最小子节点权重，防止过拟合
+                learning_rate=0.05,  # 降低学习率，提高稳定性
+                subsample=0.7,  # 减少子采样比例
+                colsample_bytree=0.7,  # 减少特征采样比例
+                reg_alpha=0.1,  # L1正则化
+                reg_lambda=1.0,  # L2正则化
                 random_state=random_seed,
                 n_jobs=-1
             )
