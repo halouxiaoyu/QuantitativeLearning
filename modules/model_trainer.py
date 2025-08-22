@@ -192,13 +192,14 @@ class ModelTrainer:
         if algorithm == 'random_forest':
             print("🌲 使用随机森林模型")
             return RandomForestClassifier(
-                n_estimators=200,  # 增加树的数量，提高稳定性
-                max_depth=5,  # 减少深度，防止过拟合
-                min_samples_split=10,  # 增加分裂所需的最小样本数
-                min_samples_leaf=5,  # 增加叶节点最小样本数
+                n_estimators=300,  # 增加树的数量，提高稳定性
+                max_depth=10,  # 增加深度，提高模型表达能力
+                min_samples_split=5,  # 减少分裂所需的最小样本数，提高灵活性
+                min_samples_leaf=2,  # 减少叶节点最小样本数，提高精度
                 max_features='sqrt',  # 特征采样，提高泛化能力
                 bootstrap=True,  # 启用bootstrap采样
                 oob_score=True,  # 启用袋外评分
+                class_weight='balanced',  # 平衡类别权重，解决数据不平衡
                 random_state=random_seed,
                 n_jobs=-1
             )

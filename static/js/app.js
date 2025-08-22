@@ -33,6 +33,72 @@ function bindEventListeners() {
     console.log('事件监听器已绑定');
 }
 
+// 加载可用股票列表
+function loadAvailableStocks() {
+    console.log('加载可用股票列表...');
+    
+    fetch('/api/future/available_stocks')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.available_stocks.length > 0) {
+                updateStockSelect(data.available_stocks);
+            } else {
+                console.log('没有可用的股票');
+            }
+        })
+        .catch(error => {
+            console.error('加载可用股票失败:', error);
+        });
+}
+
+// 更新股票选择下拉框
+function updateStockSelect(availableStocks) {
+    const stockSelect = document.getElementById('futureStockCode');
+    if (!stockSelect) return;
+    
+    // 清空现有选项
+    stockSelect.innerHTML = '';
+    
+    // 添加可用股票
+    availableStocks.forEach(stock => {
+        const option = document.createElement('option');
+        option.value = stock.stock_code;
+        option.textContent = `${stock.stock_code} (${stock.records_count}条记录, 最新: ${stock.latest_date})`;
+        stockSelect.appendChild(option);
+    });
+    
+    // 更新状态信息
+    updateStockStatusInfo(availableStocks[0].stock_code);
+}
+
+// 更新股票状态信息
+function updateStockStatusInfo(stockCode) {
+    const statusInfo = document.getElementById('stockStatusInfo');
+    if (!statusInfo) return;
+    
+    fetch(`/api/future/stock_status/${stockCode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const status = data.status;
+                if (status.can_predict) {
+                    statusInfo.innerHTML = `
+                        <span class="badge bg-success">✅ 可预测</span>
+                        <small class="text-muted ms-2">此股票已完成特征工程和模型训练</small>
+                    `;
+                } else {
+                    statusInfo.innerHTML = `
+                        <span class="badge bg-warning">⚠️ 不可预测</span>
+                        <small class="text-muted ms-2">缺少: ${status.missing_items.join(', ')}</small>
+                    `;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('检查股票状态失败:', error);
+        });
+}
+
 
 
 // 验证股票代码
@@ -98,6 +164,13 @@ function checkSystemStatus() {
     checkDataStatus();
     
     // 检查特征状态
+    checkFeatureStatus();
+    
+    // 检查模型状态
+    checkModelStatus();
+    
+    // 加载可用股票列表
+    loadAvailableStocks();
     checkFeatureStatus();
     
     // 检查模型状态
@@ -371,7 +444,7 @@ function startFeatureBuilding() {
                 checkFeatureStatus();
                 document.getElementById('featureProgress').style.display = 'none';
                 updateWorkflowStep(2, 'completed');
-                enableNextStep(3);
+                enableNextStep(3);  // 启用模型训练
             }, 2000); // 显示2秒完成状态
         } else {
             clearInterval(progressInterval); // 停止模拟进度
@@ -457,7 +530,7 @@ function startModelTraining() {
                 checkModelStatus();
                 document.getElementById('trainingProgress').style.display = 'none';
                 updateWorkflowStep(3, 'completed');
-                enableNextStep(4);
+                enableNextStep(4);  // 启用未来预测（第4步）
             }, 2000); // 显示2秒完成状态
         } else {
             clearInterval(progressInterval); // 停止模拟进度
@@ -700,7 +773,6 @@ function runFuturePrediction() {
 // 开始未来预测
 function startFuturePrediction() {
     const stockCode = document.getElementById('futureStockCode').value.trim();
-    const predictionDays = parseInt(document.getElementById('predictionDays').value) || 5;
     const confidenceThreshold = parseFloat(document.getElementById('confidenceThreshold').value) || 0.6;
     
     if (!stockCode) {
@@ -709,7 +781,7 @@ function startFuturePrediction() {
     }
     
     document.getElementById('futureProgress').style.display = 'block';
-    document.getElementById('futureStatus').textContent = '开始运行未来预测...';
+    document.getElementById('futureStatus').textContent = '开始预测未来5天涨跌...';
     
     // 重置进度条
     const progressBar = document.getElementById('futureProgressBar');
@@ -724,7 +796,7 @@ function startFuturePrediction() {
         
         if (progress >= 100) {
             clearInterval(progressInterval);
-            document.getElementById('futureStatus').textContent = '未来预测完成！';
+            document.getElementById('futureStatus').textContent = '未来5天预测完成！';
         }
     }, 200);
     
@@ -735,7 +807,7 @@ function startFuturePrediction() {
         },
         body: JSON.stringify({
             stock_code: stockCode,
-            prediction_days: predictionDays,
+            prediction_days: parseInt(document.getElementById('predictionDays').value) || 2,  // 动态获取预测天数
             confidence_threshold: confidenceThreshold
         })
     })
@@ -744,12 +816,13 @@ function startFuturePrediction() {
         if (data.success) {
             // 确保进度条显示100%
             progressBar.style.width = '100%';
-            document.getElementById('futureStatus').textContent = '未来预测完成！';
-            document.getElementById('futureStatusText').textContent = '未来预测完成！';
+            const predictionDays = parseInt(document.getElementById('predictionDays').value) || 2;
+            document.getElementById('futureStatus').textContent = `未来${predictionDays}天预测完成！`;
+            document.getElementById('futureStatusText').textContent = `未来${predictionDays}天预测完成！`;
             
             setTimeout(() => {
                 document.getElementById('futureProgress').style.display = 'none';
-                updateWorkflowStep(6, 'completed');
+                updateWorkflowStep(4, 'completed');  // 更新为第4步
                 showFutureResults(data.results);
             }, 2000); // 显示2秒完成状态
         } else {

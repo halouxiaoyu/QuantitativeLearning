@@ -116,7 +116,11 @@ class FeatureEngineer:
         feat['volume_ratio'] = feat['volume'] / feat['volume'].rolling(5).mean()
         
         # 14. 波动率指标 (市场风险)
+        feat['volatility_5'] = feat['pct_change'].rolling(window=5).std()
         feat['volatility_10'] = feat['pct_change'].rolling(window=10).std()
+        
+        # 14.1 ATR指标 (平均真实波幅)
+        feat['atr_14'] = self._calculate_atr(feat, window=14)
         
         # 15. RSI指标 (超买超卖)
         feat['rsi14'] = self._calculate_rsi(feat['close'], window=14)
@@ -135,6 +139,42 @@ class FeatureEngineer:
         
         # 20. 成交量移动平均比率 (成交量趋势)
         feat['volume_ma_ratio'] = feat['volume'] / feat['volume'].rolling(5).mean()
+        
+        # 21. 价格动量指标 (多周期)
+        feat['momentum_3'] = feat['close'] / feat['close'].shift(3) - 1
+        feat['momentum_5'] = feat['close'] / feat['close'].shift(5) - 1
+        feat['momentum_10'] = feat['close'] / feat['close'].shift(10) - 1
+        
+        # 22. 价格加速度 (动量变化率)
+        feat['price_acceleration'] = feat['momentum_3'].diff()
+        
+        # 23. 成交量加速度 (成交量变化率)
+        feat['volume_acceleration'] = feat['volume_change'].diff()
+        
+        # 24. 价格相对强度 (与市场比较)
+        feat['price_strength'] = feat['close'] / feat['close'].rolling(20).mean()
+        
+        # 25. 成交量相对强度 (与市场比较)
+        feat['volume_strength'] = feat['volume'] / feat['volume'].rolling(20).mean()
+        
+        # 26. 价格波动率比率 (短期vs长期)
+        feat['volatility_ratio'] = feat['volatility_5'] / feat['volatility_10']
+        
+        # 27. 趋势一致性 (多均线趋势)
+        feat['trend_consistency'] = ((feat['ma5'] > feat['ma10']).astype(int) + 
+                                   (feat['ma10'] > feat['ma20']).astype(int) + 
+                                   (feat['close'] > feat['ma5']).astype(int)) / 3
+        
+        # 28. 价格突破强度 (突破关键位)
+        feat['breakout_strength'] = np.where(
+            feat['close'] > feat['resistance_level'].shift(1), 
+            (feat['close'] - feat['resistance_level'].shift(1)) / feat['resistance_level'].shift(1),
+            np.where(
+                feat['close'] < feat['support_level'].shift(1),
+                (feat['support_level'].shift(1) - feat['close']) / feat['support_level'].shift(1),
+                0
+            )
+        )
         
         # 移除包含NaN的行
         initial_count = len(feat)
@@ -198,7 +238,7 @@ class FeatureEngineer:
         if label_threshold is not None:
             threshold = label_threshold
         else:
-            threshold = getattr(self, 'label_threshold', 0.03)
+            threshold = getattr(self, 'label_threshold', 0.0)
         feat['label'] = (feat['pct_change_next_day'] > threshold).astype(int)
         
         # 添加元数据
@@ -218,6 +258,21 @@ class FeatureEngineer:
         rs = gain / loss
         rsi = 100 - (100 / (1 + rs))
         return rsi
+    
+    def _calculate_atr(self, df, window=14):
+        """计算ATR指标 (平均真实波幅)"""
+        high = df['high']
+        low = df['low']
+        close = df['close']
+        
+        tr1 = high - low
+        tr2 = abs(high - close.shift(1))
+        tr3 = abs(low - close.shift(1))
+        
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        atr = tr.rolling(window=window).mean()
+        
+        return atr
     
     def save_features(self, feat, stock_code):
         """保存特征数据"""

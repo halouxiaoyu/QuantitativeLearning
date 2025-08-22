@@ -23,8 +23,7 @@ sys.path.insert(0, project_root)
 from modules.data_manager import DataManager
 from modules.feature_engineer import FeatureEngineer
 from modules.model_trainer import ModelTrainer
-from modules.backtest_analyzer import BacktestAnalyzer
-from modules.historical_predictor import HistoricalPredictor  # 历史预测验证器
+
 from modules.future_predictor import FuturePredictor  # 未来预测器
 
 app = Flask(__name__)
@@ -33,8 +32,7 @@ app = Flask(__name__)
 app.last_data_results = None
 app.last_feature_results = None
 app.last_training_results = None
-app.last_backtest_results = None
-app.last_historical_validation_results = None  # 历史验证结果
+
 app.last_future_prediction_results = None      # 未来预测结果
 
 @app.route('/')
@@ -623,6 +621,15 @@ def run_future_prediction():
         if not stock_code:
             return jsonify({'success': False, 'error': '请指定股票代码'})
         
+        # 自动添加交易所前缀
+        if not stock_code.startswith(('sh.', 'sz.')):
+            if stock_code.startswith('6'):
+                stock_code = f"sh.{stock_code}"
+            else:
+                stock_code = f"sz.{stock_code}"
+        
+        print(f"🔮 未来预测请求: 原始代码={data.get('stock_code')}, 处理后={stock_code}")
+        
         # 限制预测天数
         if prediction_days > 5:
             prediction_days = 5
@@ -642,6 +649,9 @@ def run_future_prediction():
             return jsonify({'success': False, 'error': '预测失败'})
         
     except Exception as e:
+        print(f"❌ 未来预测异常: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/future/batch_predict', methods=['POST'])
@@ -656,12 +666,25 @@ def run_batch_future_prediction():
         if not stock_list:
             return jsonify({'success': False, 'error': '请指定股票列表'})
         
+        # 自动添加交易所前缀
+        processed_stock_list = []
+        for stock_code in stock_list:
+            if not stock_code.startswith(('sh.', 'sz.')):
+                if stock_code.startswith('6'):
+                    processed_stock_list.append(f"sh.{stock_code}")
+                else:
+                    processed_stock_list.append(f"sz.{stock_code}")
+            else:
+                processed_stock_list.append(stock_code)
+        
+        print(f"🔮 批量未来预测请求: 原始列表={stock_list}, 处理后={processed_stock_list}")
+        
         # 限制预测天数
         if prediction_days > 5:
             prediction_days = 5
         
         fp = FuturePredictor('features', 'models', 'results')
-        results = fp.predict_next_n_days(stock_list[0], n_days=prediction_days, confidence_threshold=confidence_threshold)
+        results = fp.predict_next_n_days(processed_stock_list[0], n_days=prediction_days, confidence_threshold=confidence_threshold)
         
         app.last_future_prediction_results = results
         
@@ -672,9 +695,45 @@ def run_batch_future_prediction():
         })
         
     except Exception as e:
+        print(f"❌ 批量未来预测异常: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
 # ==================== 系统信息 ====================
+
+@app.route('/api/future/available_stocks')
+def get_available_stocks():
+    """获取可预测的股票列表"""
+    try:
+        fp = FuturePredictor('features', 'models', 'results')
+        available_stocks = fp.get_available_stocks()
+        
+        return jsonify({
+            'success': True,
+            'available_stocks': available_stocks,
+            'total_count': len(available_stocks)
+        })
+        
+    except Exception as e:
+        print(f"❌ 获取可用股票失败: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/future/stock_status/<stock_code>')
+def check_stock_status(stock_code):
+    """检查股票状态"""
+    try:
+        fp = FuturePredictor('features', 'models', 'results')
+        status = fp.check_stock_status(stock_code)
+        
+        return jsonify({
+            'success': True,
+            'status': status
+        })
+        
+    except Exception as e:
+        print(f"❌ 检查股票状态失败: {e}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/system/info')
 def system_info():

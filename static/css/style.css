@@ -377,3 +377,77 @@
         font-size: 1rem;
     }
 }
+
+/* 系统说明区域样式 */
+.card {
+    border: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+    border-bottom: 2px solid #007bff;
+    padding: 20px;
+}
+
+.card-header h4 {
+    margin: 0;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.card-body {
+    padding: 25px;
+}
+
+.card-body h6 {
+    color: #007bff;
+    font-weight: 600;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 8px;
+}
+
+.card-body ol, .card-body ul {
+    padding-left: 20px;
+}
+
+.card-body li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.card-body strong {
+    color: #2c3e50;
+}
+
+/* 工作流程步骤说明样式 */
+.workflow-step small {
+    font-size: 0.8rem;
+    color: #6c757d;
+    display: block;
+    margin-top: 5px;
+}
+
+/* 模块说明区域样式 */
+.alert {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.alert h6 {
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.alert ul {
+    margin-bottom: 0;
+}
+
+.alert li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
