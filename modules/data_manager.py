@@ -515,11 +515,8 @@ class DataManager:
                 # 上海股票：600xxx, 601xxx, 603xxx, 605xxx, 688xxx
                 if stock_code.startswith(('600', '601', '603', '605', '688')):
                     return f"sh.{stock_code}"
-                # 深圳股票：000xxx, 002xxx, 300xxx
-                elif stock_code.startswith(('000', '002', '300')):
-                    return f"sz.{stock_code}"
-                # 创业板股票：301xxx (新增)
-                elif stock_code.startswith('301'):
+                # 深圳股票：000xxx, 002xxx, 300xxx, 301xxx
+                elif stock_code.startswith(('000', '002', '300', '301')):
                     return f"sz.{stock_code}"
                 else:
                     # 默认按上海处理
@@ -718,8 +715,8 @@ class DataManager:
                 # 上海股票：600xxx, 601xxx, 603xxx, 605xxx, 688xxx
                 if stock_code.startswith(('600', '601', '603', '605', '688')):
                     return f"sh.{stock_code}"
-                # 深圳股票：000xxx, 002xxx, 300xxx
-                elif stock_code.startswith(('000', '002', '300')):
+                # 深圳股票：000xxx, 002xxx, 300xxx, 301xxx
+                elif stock_code.startswith(('000', '002', '300', '301')):
                     return f"sz.{stock_code}"
                 else:
                     # 默认按上海处理
@@ -728,58 +725,7 @@ class DataManager:
         # 如果无法识别，保持原样
         return stock_code
     
-    def validate_stock_code(self, stock_code):
-        """验证股票代码是否有效
-        
-        Args:
-            stock_code: 股票代码
-            
-        Returns:
-            dict: 验证结果
-        """
-        normalized_code = self._normalize_stock_code(stock_code)
-        
-        # 基本格式验证
-        if not (normalized_code.startswith('sh.') or normalized_code.startswith('sz.')):
-            return {
-                'valid': False,
-                'error': '股票代码格式无效，无法识别交易所'
-            }
-        
-        # 提取数字部分
-        try:
-            stock_number = normalized_code.split('.')[1]
-            if not stock_number.isdigit() or len(stock_number) != 6:
-                return {
-                    'valid': False,
-                    'error': '股票代码数字部分必须是6位数字'
-                }
-        except IndexError:
-            return {
-                'valid': False,
-                'error': '股票代码格式错误'
-            }
-        
-        # 交易所特定验证
-        if normalized_code.startswith('sh.'):
-            if not stock_number.startswith(('600', '601', '603', '605', '688')):
-                return {
-                    'valid': False,
-                    'error': '上海交易所股票代码应以600、601、603、605或688开头'
-                }
-        elif normalized_code.startswith('sz.'):
-            if not stock_number.startswith(('000', '002', '300')):
-                return {
-                    'valid': False,
-                    'error': '深圳交易所股票代码应以000、002或300开头'
-                }
-        
-        return {
-            'valid': True,
-            'normalized_code': normalized_code,
-            'exchange': '上海' if normalized_code.startswith('sh.') else '深圳',
-            'stock_number': stock_number
-        }
+
 
 def main():
     """主函数"""

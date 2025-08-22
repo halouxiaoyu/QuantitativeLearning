@@ -134,7 +134,7 @@ class ModelTrainer:
         
         X = training_data[feature_cols].values
         
-        # 使用特征文件中的标签列（第二天涨跌幅，0.1%阈值）
+        # 使用特征文件中的标签列（第二天涨跌幅，3.0%阈值）
         y = training_data['label'].values
         
         # 移除包含NaN的行

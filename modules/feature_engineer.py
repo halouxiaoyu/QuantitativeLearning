@@ -52,7 +52,7 @@ class FeatureEngineer:
             print(f"❌ 数据加载失败: {e}")
             return None
     
-    def build_features(self, df):
+    def build_features(self, df, label_threshold=None):
         """构建技术指标特征（优化版本，只保留最重要的20个特征）"""
         if df is None or df.empty:
             return None
@@ -189,11 +189,17 @@ class FeatureEngineer:
         # 先移除最后1行（因为没有第二天的价格数据）
         feat = feat.iloc[:-1].copy()
         
-        # 添加标签列：预测第二天的涨跌，1%阈值
+        # 添加标签列：预测第二天的涨跌，可配置阈值
         # 计算第二天的价格相对于当前价格的涨跌幅
         feat['price_next_day'] = feat['close'].shift(-1)
         feat['pct_change_next_day'] = (feat['price_next_day'] - feat['close']) / feat['close']
-        feat['label'] = (feat['pct_change_next_day'] > 0.01).astype(int)
+        
+        # 使用可配置的阈值，优先使用传入的参数，其次使用实例变量，最后使用默认值
+        if label_threshold is not None:
+            threshold = label_threshold
+        else:
+            threshold = getattr(self, 'label_threshold', 0.03)
+        feat['label'] = (feat['pct_change_next_day'] > threshold).astype(int)
         
         # 添加元数据
         feat.attrs['stock_code'] = df.attrs.get('stock_code', 'unknown')
@@ -258,7 +264,7 @@ class FeatureEngineer:
             print(f"❌ 保存特征失败: {e}")
             return False
     
-    def batch_build_features(self, stock_list=None, pool_name='all'):
+    def batch_build_features(self, stock_list=None, pool_name='all', label_threshold=0.03):
         """批量构建特征"""
         if stock_list is None:
             # 从数据目录获取股票列表
@@ -274,6 +280,7 @@ class FeatureEngineer:
             return {}
         
         print(f"🚀 开始批量构建特征: {len(stock_list)} 只股票")
+        print(f"🎯 标签阈值: {label_threshold:.1%}")
         print("=" * 60)
         
         results = {}
@@ -288,6 +295,8 @@ class FeatureEngineer:
                 df = self.load_cleaned_data(stock_code)
                 
                 if df is not None and not df.empty:
+                    # 设置标签阈值
+                    self.label_threshold = label_threshold
                     # 构建特征
                     feat = self.build_features(df)
                     

@@ -309,8 +309,16 @@ def features_status():
 def build_features():
     """构建特征"""
     try:
+        data = request.get_json()
+        stock_list = data.get('stock_list', None)
+        label_threshold = data.get('label_threshold', 0.03)  # 默认3%
+        
         fe = FeatureEngineer()
-        results = fe.batch_build_features()
+        
+        if stock_list:
+            results = fe.batch_build_features(stock_list=stock_list, label_threshold=label_threshold)
+        else:
+            results = fe.batch_build_features(label_threshold=label_threshold)
         
         app.last_feature_results = results
         

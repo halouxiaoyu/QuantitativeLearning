@@ -239,6 +239,13 @@
                         <small class="text-muted">选择要构建的特征类型</small>
                     </div>
                     
+                    <div class="mb-3">
+                        <label for="labelThreshold" class="form-label">标签阈值 (%)</label>
+                        <input type="number" class="form-control" id="labelThreshold" 
+                               value="3.0" step="0.1" min="0.0" max="10.0">
+                        <small class="text-muted">设置涨跌幅阈值，超过此值标记为上涨，支持范围：0.0-10.0%</small>
+                    </div>
+                    
                     <button class="btn btn-success btn-lg" onclick="buildFeatures()" id="buildFeaturesBtn">
                         <i class="bi bi-gear"></i> 构建特征
                     </button>

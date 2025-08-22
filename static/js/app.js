@@ -65,6 +65,7 @@ function validateStockCode() {
                     <br><strong>标准化代码:</strong> ${validation.normalized_code}
                     <br><strong>交易所:</strong> ${validation.exchange}
                     <br><strong>股票编号:</strong> ${validation.stock_number}
+                    ${validation.board ? `<br><strong>板块:</strong> ${validation.board}` : ''}
                 </div>
             `;
         } else {
@@ -347,11 +348,17 @@ function startFeatureBuilding() {
         }
     }, 400);
     
+    // 获取标签阈值
+    const labelThreshold = parseFloat(document.getElementById('labelThreshold').value) / 100;
+    
     fetch('/api/features/build', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({
+            label_threshold: labelThreshold
+        })
     })
     .then(response => response.json())
     .then(data => {
